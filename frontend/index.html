@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Sentiment Analysis Friend</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+      background: #f2f2f7;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    /* MAIN CONTAINER */
+    .container {
+      width: 90%;
+      max-width: 900px;
+      height: 90vh;
+      background: #ffffff;
+      border-radius: 20px;
+      box-shadow: 0 6px 25px rgba(0,0,0,0.15);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* HEADER */
+    .header {
+      background: linear-gradient(135deg, #5a4ff3, #7b32ff);
+      padding: 15px 20px;
+      color: white;
+      font-size: 22px;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .header img {
+      width: 45px;
+      height: 45px;
+      border-radius: 50%;
+      border: 2px solid white;
+    }
+
+    /* CHATBOX */
+    #chatbox {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+      background: #f7f7fb;
+    }
+
+    .user, .bot {
+      margin: 12px 0;
+      display: flex;
+    }
+
+    .user {
+      justify-content: flex-end;
+    }
+
+    .bot {
+      justify-content: flex-start;
+    }
+
+    .bubble {
+      padding: 12px 16px;
+      border-radius: 12px;
+      max-width: 70%;
+      font-size: 15px;
+    }
+
+    .user .bubble {
+      background: #4b7bec;
+      color: white;
+      border-bottom-right-radius: 4px;
+    }
+
+    .bot .bubble {
+      background: #e0e0e5;
+      color: #111;
+      border-bottom-left-radius: 4px;
+    }
+
+    #typing {
+      padding: 5px 15px;
+      color: gray;
+      font-style: italic;
+      display: none;
+    }
+
+    /* INPUT AREA */
+    .input-area {
+      padding: 10px;
+      background: #fff;
+      display: flex;
+      gap: 10px;
+      border-top: 1px solid #ccc;
+    }
+
+    #msg {
+      flex: 1;
+      padding: 12px;
+      font-size: 16px;
+      border-radius: 10px;
+      border: 1px solid #ccc;
+      max-height: 150px;
+      overflow-y: auto;
+      resize: none;
+    }
+
+    #msg:focus {
+      outline: none;
+      border-color: #5a4ff3;
+    }
+
+    .send-btn {
+      background: #5a4ff3;
+      border: none;
+      padding: 0 18px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .send-btn img {
+      width: 22px;
+      filter: brightness(200%);
+    }
+
+    /* Buttons under chatbox */
+    .actions {
+      text-align: center;
+      padding: 10px;
+    }
+
+    .actions button {
+      background: #5a4ff3;
+      color: white;
+      padding: 10px 18px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-top: 5px;
+      font-size: 16px;
+    }
+
+    /* MODAL POPUP */
+    .modal {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.5);
+      display: none;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .modal-content {
+      background: #fff;
+      width: 80%;
+      max-width: 500px;
+      padding: 25px;
+      border-radius: 15px;
+      box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+      animation: popup 0.3s ease-out;
+    }
+
+    @keyframes popup {
+      0% { transform: scale(0.7); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    .close-btn {
+      margin-top: 15px;
+      padding: 8px 14px;
+      background: #ff4757;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="container">
+
+  <!-- HEADER -->
+  <div class="header">
+    <img src="https://i.pravatar.cc/150?img=12"/>
+    Sentiment Analysis Friend
+  </div>
+
+  <!-- CHATBOX -->
+  <div id="chatbox"></div>
+  <p id="typing">AI is typing...</p>
+
+  <!-- INPUT AREA -->
+  <div class="input-area">
+    <textarea id="msg" placeholder="Type message..." rows="1"></textarea>
+    <button class="send-btn" onclick="sendMessage()">
+      <img src="https://cdn-icons-png.flaticon.com/512/2989/2989993.png">
+    </button>
+  </div>
+
+  <div class="actions">
+    <button onclick="checkTrend()">Check Mood Trend</button><br>
+    <button onclick="resetChat()">Reset Chat</button>
+  </div>
+</div>
+
+<!-- MODAL POPUP -->
+<div class="modal" id="trendModal">
+  <div class="modal-content">
+    <h3>Mood Analysis</h3>
+    <div id="trendResult"></div>
+    <button class="close-btn" onclick="closeModal()">Close</button>
+  </div>
+</div>
+
+<script>
+  const userId = "user123";
+
+  /* Auto-expand textarea */
+  const textarea = document.getElementById("msg");
+  textarea.addEventListener("input", () => {
+    textarea.style.height = "auto";
+    textarea.style.height = (textarea.scrollHeight) + "px";
+  });
+
+  function appendMessage(sender, text, sentiment=null) {
+    const box = document.getElementById("chatbox");
+    let html = `<div class='${sender}'><div class='bubble'>${text}`;
+    if (sentiment) html += `<br><small>Sentiment: ${sentiment}</small>`;
+    html += `</div></div>`;
+    box.innerHTML += html;
+    box.scrollTop = box.scrollHeight;
+  }
+
+  async function sendMessage() {
+    const msg = textarea.value.trim();
+    if (!msg) return;
+    appendMessage("user", msg);
+    textarea.value = "";
+    textarea.style.height = "40px";
+
+    document.getElementById("typing").style.display = "block";
+
+    const res = await fetch("http://127.0.0.1:8000/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: userId, message: msg })
+    });
+
+    const data = await res.json();
+    document.getElementById("typing").style.display = "none";
+    appendMessage("bot", data.reply, data.sentiment);
+  }
+
+  /* MOOD TREND — modal popup */
+  async function checkTrend() {
+    const res = await fetch(`http://127.0.0.1:8000/trend/${userId}`);
+    const data = await res.json();
+
+    const mood = data.trend.overall_mood || "Not available";
+    const summary = data.trend.summary || "No summary available";
+
+    document.getElementById("trendResult").innerHTML = `
+        <p><strong>${mood}</strong></p>
+        <p>${summary}</p>
+    `;
+
+    document.getElementById("trendModal").style.display = "flex";
+  }
+
+
+  function closeModal() {
+    document.getElementById("trendModal").style.display = "none";
+  }
+
+  /* RESET CHAT */
+  async function resetChat() {
+    await fetch(`http://127.0.0.1:8000/reset/${userId}`, { method: "DELETE" });
+    document.getElementById("chatbox").innerHTML = "";
+    alert("Chat history cleared.");
+  }
+</script>
+
+</body>
+</html>
